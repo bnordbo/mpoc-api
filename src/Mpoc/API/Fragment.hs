@@ -1,7 +1,7 @@
-{-# LANGUAGE DataKinds     #-}
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DataKinds             #-}
+{-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE DuplicateRecordFields #-}
-{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeOperators         #-}
 
 module Mpoc.API.Fragment
   ( FragmentAPI
@@ -9,11 +9,12 @@ module Mpoc.API.Fragment
   ) where
 
 import Control.Applicative    ((<$>))
+import Control.Monad          (mzero)
 import Control.Monad.IO.Class
-import Data.Aeson             (FromJSON, ToJSON(..), Value(String))
+import Data.Aeson             (FromJSON(..), ToJSON(..), Value(String), withText)
 import Data.List              (find)
 import Data.Text              (Text)
-import Data.UUID              (UUID, toText)
+import Data.UUID              (UUID, fromText, toText)
 import Data.UUID.V4           (nextRandom)
 import GHC.Generics
 import Network.Wai
@@ -32,6 +33,10 @@ newtype FragmentId = FragmentId UUID
 instance ToJSON FragmentId where
   toJSON (FragmentId uuid) = String $ toText uuid
 
+instance FromJSON FragmentId where
+  parseJSON = withText "uuid string" $
+    maybe mzero (return . FragmentId) . fromText
+
 data Fragment = Fragment
   { fragId :: FragmentId
   , title  :: String
@@ -43,21 +48,21 @@ instance ToJSON Fragment
 
 -- XXX: Maybe split the pure API types from the model types?
 -- XXX: Do we set access immediately? How do we expose public fragments?
--- XXX: With DuplicateRecordFields, we should be able to use title/body.
 data NewFragment = NewFragment
-  { nTitle  :: String
-  , nBody   :: String
+  { title  :: String
+  , body   :: String
   } deriving (Eq, Generic, Show)
 
 instance FromJSON NewFragment
 
 type FragmentAPI
   =    Get  '[JSON] [Fragment]
-  :<|> Capture "fragmentId" String :> Get  '[JSON] Fragment
+  :<|> Capture "fragmentId" FragmentId :> Get  '[JSON] Fragment
   :<|> ReqBody '[JSON] NewFragment :> Post '[JSON] Fragment
 
 fragmentServer :: Server FragmentAPI
-fragmentServer = listFragments
+fragmentServer
+    =    listFragments
     :<|> getFragment
     :<|> addFragment
   where
@@ -66,19 +71,21 @@ fragmentServer = listFragments
       i <- FragmentId <$> liftIO nextRandom
       return Fragment
         { fragId = i
-        , title  = nTitle f
+        , title  = title (f :: NewFragment)
         , access = Private
-        , body   = nBody f
+        , body   = body (f :: NewFragment)
         }
 
     listFragments :: Handler [Fragment]
     listFragments = liftIO fragments
 
-    getFragment :: String -> Handler Fragment
+    getFragment :: FragmentId -> Handler Fragment
     getFragment n = do
       f <- liftIO fragments
       maybe (throwError $ err404 { errBody = "No such fragment" }) return
-        $ find ((== n) . title) f
+        $ find ((== n) . fragId) f
+
+---
 
 fragments :: IO [Fragment]
 fragments =
