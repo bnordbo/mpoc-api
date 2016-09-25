@@ -2,7 +2,10 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Mpoc.API.Pocket where
+module Mpoc.API.Pocket
+  ( PocketAPI
+  , pocketServer
+  ) where
 
 import Data.Aeson                (FromJSON, ToJSON)
 import Data.List                 (find)
@@ -10,7 +13,6 @@ import Data.Maybe                (fromMaybe)
 import Data.Text                 (Text)
 import GHC.Generics
 import Network.Wai
-import Network.Wai.Handler.Warp
 import Servant
 
 
@@ -29,37 +31,23 @@ instance FromJSON Pocket
 instance ToJSON Pocket
 
 type PocketAPI
-  =    "pockets" :> Get '[JSON] [Pocket]
-  :<|> "pockets" :> Capture "pocketId" String
-                 :> Get '[JSON] Pocket
-  :<|> "pockets" :> ReqBody '[JSON] Pocket
-                 :> Post '[JSON] Pocket
+  =    Get  '[JSON] [Pocket]
+  :<|> Capture "pocketId" String :> Get  '[JSON] Pocket
+  :<|> ReqBody '[JSON] Pocket :> Post '[JSON] Pocket
 
----
-
-server :: Server PocketAPI
-server = listPockets
-    :<|> singlePocket
+pocketServer :: Server PocketAPI
+pocketServer = listPockets
+    :<|> getPocket
     :<|> addPocket
-
   where
     addPocket :: Pocket -> Handler Pocket
     addPocket p = return p
 
     listPockets :: Handler [Pocket]
-    listPockets = return pockets1
+    listPockets = return pockets
 
-    singlePocket :: String -> Handler Pocket
-    singlePocket n = maybe (throwError $ err404 { errBody = "No such pocket" }) return
-                   $ find ((== n) . name) pockets1
+    getPocket :: String -> Handler Pocket
+    getPocket n = maybe (throwError $ err404 { errBody = "No such pocket" }) return
+                $ find ((== n) . name) pockets
 
-mpocApi :: Proxy PocketAPI
-mpocApi = Proxy
-
-app1 :: Application
-app1 = serve mpocApi server
-
-pockets1 = [Pocket "Foo" Private, Pocket "Bar" Private]
-
-main :: IO ()
-main = run 8081 app1
+pockets = [Pocket "Foo" Private, Pocket "Bar" Private]
