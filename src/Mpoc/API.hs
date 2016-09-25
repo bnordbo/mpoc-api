@@ -9,10 +9,13 @@ import Network.Wai.Handler.Warp
 import Servant
 
 
-type MpocAPI = "pockets" :> PocketAPI
+type MpocAPI
+  =    "pockets"   :> PocketAPI
+  :<|> "fragments" :> FragmentAPI
 
 server :: Server MpocAPI
 server = pocketServer
+    :<|> fragmentServer
 
 mpocApi :: Proxy MpocAPI
 mpocApi = Proxy

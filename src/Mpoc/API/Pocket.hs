@@ -8,8 +8,6 @@ module Mpoc.API.Pocket
   ) where
 
 import Data.Aeson                (FromJSON, ToJSON)
-import Data.List                 (find)
-import Data.Maybe                (fromMaybe)
 import Data.Text                 (Text)
 import GHC.Generics
 import Network.Wai
@@ -32,22 +30,17 @@ instance ToJSON Pocket
 
 type PocketAPI
   =    Get  '[JSON] [Pocket]
-  :<|> Capture "pocketId" String :> Get  '[JSON] Pocket
   :<|> ReqBody '[JSON] Pocket :> Post '[JSON] Pocket
 
 pocketServer :: Server PocketAPI
-pocketServer = listPockets
-    :<|> getPocket
-    :<|> addPocket
+pocketServer = listPockets :<|> addPocket
   where
-    addPocket :: Pocket -> Handler Pocket
-    addPocket p = return p
-
     listPockets :: Handler [Pocket]
     listPockets = return pockets
 
-    getPocket :: String -> Handler Pocket
-    getPocket n = maybe (throwError $ err404 { errBody = "No such pocket" }) return
-                $ find ((== n) . name) pockets
+    addPocket :: Pocket -> Handler Pocket
+    addPocket = return
+
+---
 
 pockets = [Pocket "Foo" Private, Pocket "Bar" Private]

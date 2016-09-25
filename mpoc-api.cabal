@@ -19,10 +19,11 @@ library
                      , generic-aeson
                      , json-schema
                      , mtl
-                     , rest-core
                      , servant-server
                      , text
                      , transformers
+                     , uuid
+                     , uuid
                      , wai
                      , warp
   default-language:    Haskell2010
