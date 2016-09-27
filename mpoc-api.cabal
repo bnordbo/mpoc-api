@@ -21,10 +21,12 @@ library
                      , base                >= 4.7 && < 5
                      , conduit
                      , lens
+                     , monad-control
                      , mtl
                      , servant-server
                      , text
                      , transformers
+                     , transformers-base
                      , uuid
                      , wai
                      , warp
