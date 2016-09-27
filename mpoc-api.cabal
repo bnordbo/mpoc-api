@@ -15,14 +15,16 @@ library
   hs-source-dirs:      src
   exposed-modules:     Mpoc
   build-depends:       aeson
-                     , base >= 4.7 && < 5
-                     , generic-aeson
-                     , json-schema
+                     , amazonka
+                     , amazonka-core
+                     , amazonka-dynamodb
+                     , base                >= 4.7 && < 5
+                     , conduit
+                     , lens
                      , mtl
                      , servant-server
                      , text
                      , transformers
-                     , uuid
                      , uuid
                      , wai
                      , warp
