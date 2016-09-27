@@ -1,5 +1,4 @@
 {-# LANGUAGE DataKinds     #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE TypeOperators #-}
 
 module Mpoc.API.Pocket
@@ -7,26 +6,10 @@ module Mpoc.API.Pocket
   , pocketServer
   ) where
 
-import Data.Aeson                (FromJSON, ToJSON)
-import Data.Text                 (Text)
-import GHC.Generics
+import Mpoc.Types
 import Network.Wai
 import Servant
 
-
-data PocketAccess = Private | Public
-  deriving (Eq, Show, Generic)
-
-instance FromJSON PocketAccess
-instance ToJSON PocketAccess
-
-data Pocket = Pocket
-  { name   :: String
-  , access :: PocketAccess
-  } deriving (Eq, Generic, Show)
-
-instance FromJSON Pocket
-instance ToJSON Pocket
 
 type PocketAPI
   =    Get  '[JSON] [Pocket]
@@ -43,4 +26,4 @@ pocketServer = listPockets :<|> addPocket
 
 ---
 
-pockets = [Pocket "Foo" Private, Pocket "Bar" Private]
+pockets = [Pocket "Foo" PrivatePocket, Pocket "Bar" PrivatePocket]
