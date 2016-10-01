@@ -25,7 +25,13 @@ import           System.IO
 import qualified Data.UUID                  as UUID
 
 
-data DataError = BadFormat
+data DataError
+  = MissingAttribute String
+  | BadType String
+  | BadFormat String
+  deriving Show
+
+instance Exception DataError
 
 newtype Data a = Data { unwrap :: ReaderT Env IO a }
   deriving ( Functor
@@ -62,24 +68,37 @@ addPocket p = do
         putItem "Pockets" & piItem .~ pocket
     return ()
   where
-    pocket = Map.fromList $
-        [ ("UserId", attributeValue & avS .~ Just userText)
+    pocket = Map.fromList
+        [ ("UserId", attributeValue & avS .~ Just (userText $ user p))
         , ("Name",   attributeValue & avS .~ Just (name p))
         , ("Access", attributeValue & avN .~ Just "0")
         ]
-    userText = let (UserId uuid) = user p in
-        UUID.toText uuid
 
-listPockets :: Data [Pocket]
-listPockets = undefined
+listPockets :: UserId -> Data [Either DataError Pocket]
+listPockets uid = do
+    env <- ask
+    runResourceT . runAWST env . within Ireland $
+        paginate (query "Pockets"
+                   & qKeyConditionExpression    .~ condition
+                   & qExpressionAttributeValues .~ attributes)
+        =$= CL.concatMap (view qrsItems)
+        =$= CL.map toPocket
+         $$ CL.consume
+  where
+    condition  = Just "UserId = :userId"
+    attributes = Map.fromList
+      [(":userId", attributeValue & avS .~ Just (userText uid))]
+
 
 toPocket :: HashMap Text AttributeValue -> Either DataError Pocket
 toPocket avs = Pocket <$> user <*> title <*> access
   where
-    user   = note BadFormat (Map.lookup "user" avs
-                             >>= view avS
-                             >>= fmap UserId . UUID.fromText)
-    title  = note BadFormat (Map.lookup "title" avs >>= view avS)
+    -- XXX: Way to verbose, but debugging friendly. Extract.
+    user   = note (MissingAttribute "userid missing") (Map.lookup "UserId" avs)
+             >>= note (BadType "bad type for user") . view avS
+             >>= note (BadFormat "userid not a uuid") . fmap UserId . UUID.fromText
+    title  = note (BadFormat "invalid title")
+      (Map.lookup "Name" avs >>= view avS)
     access = pure PrivatePocket
 
 
@@ -112,3 +131,10 @@ toFragment avs = Fragment <$> id <*> title <*> access <*> body
     title  = Map.lookup "title" avs >>= view avS
     access = pure PrivateFragment
     body   = Map.lookup "body" avs >>= view avS
+
+
+--------------------------------------------------------------------------------
+-- Helpers
+
+userText :: UserId -> Text
+userText (UserId uuid) = UUID.toText uuid
