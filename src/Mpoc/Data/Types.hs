@@ -1,11 +1,20 @@
-module Mpoc.Data.Support
+module Mpoc.Data.Types
     ( DataError    (..)
     , FromDynamoDB (..)
     , ToDynamoDB   (..)
     , attr
     -- * Re-exports
     , avS
+    , avB
+    , avBOOL
+    , avBS
+    , avL
+    , avM
     , avN
+    , avNS
+    , avNULL
+    , avS
+    , avSS
     ) where
 
 import           Control.Error           (note)

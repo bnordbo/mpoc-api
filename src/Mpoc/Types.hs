@@ -9,9 +9,7 @@ module Mpoc.Types
     , Fragment       (..)
     , FragmentId     (..)
     -- * Re-exports
-    , DataError      (..)
-    , FromDynamoDB   (..)
-    , ToDynamoDB     (..)
+    , module Mpoc.Data.Types
     ) where
 
 import           Control.Error          (note)
@@ -21,7 +19,7 @@ import qualified Data.HashMap.Strict as Map
 import           Data.Text              (Text)
 import           Data.UUID              (UUID)
 import qualified Data.UUID           as UUID
-import           Mpoc.Data.Support
+import           Mpoc.Data.Types
 import           GHC.Generics
 
 
