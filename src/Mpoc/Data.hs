@@ -3,9 +3,7 @@
 {-# LANGUAGE TypeFamilies               #-}
 {-# LANGUAGE UndecidableInstances       #-}
 
-import           Control.Error
 import           Control.Lens
-import           Control.Monad
 import           Control.Monad.Base
 import           Control.Monad.Catch
 import           Control.Monad.IO.Class
@@ -18,38 +16,27 @@ import           Data.HashMap.Strict            (HashMap)
 import qualified Data.HashMap.Strict         as Map
 import           Data.Text                      (Text)
 import           Mpoc.Types
-import           Network.AWS.Data
 import           Network.AWS.DynamoDB
-import           Network.AWS.Types
-import           System.IO
 import qualified Data.UUID                  as UUID
 
 
-data DataError
-  = MissingAttribute String
-  | BadType String
-  | BadFormat String
-  deriving Show
-
-instance Exception DataError
-
 newtype Data a = Data { unwrap :: ReaderT Env IO a }
-  deriving ( Functor
-           , Applicative
-           , Monad
-           , MonadIO
-           , MonadCatch
-           , MonadThrow
-           , MonadReader Env
-           )
+    deriving ( Functor
+             , Applicative
+             , Monad
+             , MonadIO
+             , MonadCatch
+             , MonadThrow
+             , MonadReader Env
+             )
 
 instance MonadBase IO Data where
-  liftBase = liftIO
+    liftBase = liftIO
 
 instance MonadBaseControl IO Data where
-  type StM Data a = StM (ReaderT Env IO) a
-  liftBaseWith f  = Data $ liftBaseWith $ \run -> f (run . unwrap)
-  restoreM        = Data . restoreM
+    type StM Data a = StM (ReaderT Env IO) a
+    liftBaseWith f  = Data $ liftBaseWith $ \run -> f (run . unwrap)
+    restoreM        = Data . restoreM
 
 runData :: MonadIO m => Env -> Data a -> m a
 runData e d = liftIO $ runReaderT (unwrap d) e
@@ -79,27 +66,15 @@ listPockets uid = do
     env <- ask
     runResourceT . runAWST env . within Ireland $
         paginate (query "Pockets"
-                   & qKeyConditionExpression    .~ condition
-                   & qExpressionAttributeValues .~ attributes)
+                  & qKeyConditionExpression    .~ condition
+                  & qExpressionAttributeValues .~ attributes)
         =$= CL.concatMap (view qrsItems)
-        =$= CL.map toPocket
+        =$= CL.map fromDynamoDB
          $$ CL.consume
   where
     condition  = Just "UserId = :userId"
     attributes = Map.fromList
       [(":userId", attributeValue & avS .~ Just (userText uid))]
-
-
-toPocket :: HashMap Text AttributeValue -> Either DataError Pocket
-toPocket avs = Pocket <$> user <*> title <*> access
-  where
-    -- XXX: Way to verbose, but debugging friendly. Extract.
-    user   = note (MissingAttribute "userid missing") (Map.lookup "UserId" avs)
-             >>= note (BadType "bad type for user") . view avS
-             >>= note (BadFormat "userid not a uuid") . fmap UserId . UUID.fromText
-    title  = note (BadFormat "invalid title")
-      (Map.lookup "Name" avs >>= view avS)
-    access = pure PrivatePocket
 
 
 --------------------------------------------------------------------------------
@@ -108,29 +83,23 @@ toPocket avs = Pocket <$> user <*> title <*> access
 addFragment :: Fragment -> Data ()
 addFragment f = undefined
 
-listFragments :: Data [Fragment]
-listFragments = undefined
-
 getFragment :: FragmentId -> Data (Maybe Fragment)
 getFragment fid = undefined
 
-test :: Data [Maybe Fragment]
-test = do
+listFragments :: UserId -> Data [Either DataError Fragment]
+listFragments uid = do
     env <- ask
     runResourceT . runAWST env . within Ireland $
-        paginate (scan "Fragments")
-        =$= CL.concatMap (view srsItems)
-        =$= CL.map toFragment
+        paginate (query "Fragments"
+                  & qKeyConditionExpression    .~ condition
+                  & qExpressionAttributeValues .~ attributes)
+        =$= CL.concatMap (view qrsItems)
+        =$= CL.map fromDynamoDB
         $$ CL.consume
-
-toFragment :: HashMap Text AttributeValue -> Maybe Fragment
-toFragment avs = Fragment <$> id <*> title <*> access <*> body
   where
-    id     = Map.lookup "id" avs
-             >>= view avS >>= fmap FragmentId . UUID.fromText
-    title  = Map.lookup "title" avs >>= view avS
-    access = pure PrivateFragment
-    body   = Map.lookup "body" avs >>= view avS
+    condition  = Just "UserId = :userId"
+    attributes = Map.fromList
+      [(":userId", attributeValue & avS .~ Just (userText uid))]
 
 
 --------------------------------------------------------------------------------

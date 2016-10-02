@@ -1,13 +1,28 @@
 {-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 
-module Mpoc.Types where
+module Mpoc.Types
+    ( UserId         (..)
+    , PocketAccess   (..)
+    , Pocket         (..)
+    , FragmentAccess (..)
+    , Fragment       (..)
+    , FragmentId     (..)
+    -- * Re-exports
+    , DataError      (..)
+    , FromDynamoDB   (..)
+    , ToDynamoDB     (..)
+    ) where
 
-import Control.Monad (mzero)
-import Data.Aeson    (FromJSON(..), ToJSON(..), Value(String), withText)
-import Data.Text     (Text)
-import Data.UUID     (UUID, fromText, toText)
-import GHC.Generics
+import           Control.Error          (note)
+import           Control.Monad          (mzero)
+import           Data.Aeson
+import qualified Data.HashMap.Strict as Map
+import           Data.Text              (Text)
+import           Data.UUID              (UUID)
+import qualified Data.UUID           as UUID
+import           Mpoc.Data.Support
+import           GHC.Generics
 
 
 --------------------------------------------------------------------------------
@@ -18,10 +33,10 @@ newtype UserId = UserId UUID
 
 instance FromJSON UserId where
   parseJSON = withText "uuid string" $
-    maybe mzero (return . UserId) . fromText
+    maybe mzero (return . UserId) . UUID.fromText
 
 instance ToJSON UserId where
-  toJSON (UserId uuid) = String $ toText uuid
+  toJSON (UserId uuid) = String $ UUID.toText uuid
 
 
 --------------------------------------------------------------------------------
@@ -42,6 +57,12 @@ data Pocket = Pocket
 instance FromJSON Pocket
 instance ToJSON Pocket
 
+instance FromDynamoDB Pocket where
+    fromDynamoDB avs =
+        Pocket <$> attr avs "UserId" avS (fmap UserId . UUID.fromText)
+               <*> attr avs "Name"   avS pure
+               <*> attr avs "Access" avN (const $ pure PublicPocket)
+
 
 --------------------------------------------------------------------------------
 -- Fragment
@@ -57,10 +78,10 @@ newtype FragmentId = FragmentId UUID
 
 instance FromJSON FragmentId where
   parseJSON = withText "uuid string" $
-    maybe mzero (return . FragmentId) . fromText
+    maybe mzero (return . FragmentId) . UUID.fromText
 
 instance ToJSON FragmentId where
-  toJSON (FragmentId uuid) = String $ toText uuid
+  toJSON (FragmentId uuid) = String $ UUID.toText uuid
 
 data Fragment = Fragment
     { fragId :: FragmentId
@@ -70,6 +91,13 @@ data Fragment = Fragment
     } deriving (Eq, Generic, Show)
 
 instance ToJSON Fragment
+
+instance FromDynamoDB Fragment where
+    fromDynamoDB avs =
+        Fragment <$> attr avs "FragmentId" avS (fmap FragmentId . UUID.fromText)
+                 <*> attr avs "Title"      avS pure
+                 <*> attr avs "Access"     avN (const $ pure PublicFragment)
+                 <*> attr avs "Body"       avS pure
 
 -- XXX: Maybe split the pure API types from the model types?
 -- XXX: Do we set access immediately? How do we expose public fragments?
