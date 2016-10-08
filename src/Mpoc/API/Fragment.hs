@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds             #-}
 {-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE TypeOperators         #-}
 
 module Mpoc.API.Fragment
@@ -33,27 +34,15 @@ fragmentServer
       return Fragment
         { fragId = i
         , title  = title (f :: NewFragment)
-        , access = Private
+        , access = PrivateFragment
         , body   = body (f :: NewFragment)
         }
 
     listFragments :: Handler [Fragment]
-    listFragments = liftIO fragments
+    listFragments = pure []
 
     getFragment :: FragmentId -> Handler Fragment
     getFragment n = do
-      f <- liftIO fragments
+      f <- pure []
       maybe (throwError $ err404 { errBody = "No such fragment" }) return
         $ find ((== n) . fragId) f
-
----
-
-fragments :: IO [Fragment]
-fragments =
-  mapM (\(t, a, b) -> do
-           id <- FragmentId <$> nextRandom
-           return $ Fragment id t a b)
-    [ ("Lorem ipsum", PrivateFragment, "Lorem ipsum dolor sit amet.")
-    , ("Froob?", PrivateFragment, "Foo. Foo hoo? Foo bar.")
-    , ("Ur", PublicFragment, "Han kom som ett yrväder.")
-  ]

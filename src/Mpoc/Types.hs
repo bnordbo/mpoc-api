@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveGeneric         #-}
 {-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE OverloadedStrings     #-}
 
 module Mpoc.Types
     ( UserId         (..)
@@ -8,6 +9,7 @@ module Mpoc.Types
     , FragmentAccess (..)
     , Fragment       (..)
     , FragmentId     (..)
+    , NewFragment    (..)
     -- * Re-exports
     , module Mpoc.Data.Types
     ) where
@@ -19,8 +21,9 @@ import qualified Data.HashMap.Strict as Map
 import           Data.Text              (Text)
 import           Data.UUID              (UUID)
 import qualified Data.UUID           as UUID
-import           Mpoc.Data.Types
 import           GHC.Generics
+import           Mpoc.Data.Types
+import           Web.HttpApiData        (FromHttpApiData(..))
 
 
 --------------------------------------------------------------------------------
@@ -74,6 +77,10 @@ instance ToJSON FragmentAccess
 newtype FragmentId = FragmentId UUID
   deriving (Eq, Show)
 
+instance FromHttpApiData FragmentId where
+  parseQueryParam q =
+      FragmentId <$> note ("Invalid fragment ID") (UUID.fromText q)
+
 instance FromJSON FragmentId where
   parseJSON = withText "uuid string" $
     maybe mzero (return . FragmentId) . UUID.fromText
@@ -100,8 +107,8 @@ instance FromDynamoDB Fragment where
 -- XXX: Maybe split the pure API types from the model types?
 -- XXX: Do we set access immediately? How do we expose public fragments?
 data NewFragment = NewFragment
-    { title  :: String
-    , body   :: String
+    { title  :: Text
+    , body   :: Text
     } deriving (Eq, Generic, Show)
 
 instance FromJSON NewFragment

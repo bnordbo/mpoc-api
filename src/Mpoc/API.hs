@@ -1,7 +1,10 @@
 {-# LANGUAGE DataKinds     #-}
 {-# LANGUAGE TypeOperators #-}
 
-module Mpoc.API where
+module Mpoc.API
+  ( MpocAPI
+  , app
+  ) where
 
 import Mpoc.API.Fragment
 import Mpoc.API.Pocket
@@ -22,6 +25,3 @@ mpocApi = Proxy
 
 app :: Application
 app = serve mpocApi server
-
-main :: IO ()
-main = run 8081 app

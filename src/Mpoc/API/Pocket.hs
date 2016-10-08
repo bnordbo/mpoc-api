@@ -19,11 +19,7 @@ pocketServer :: Server PocketAPI
 pocketServer = listPockets :<|> addPocket
   where
     listPockets :: Handler [Pocket]
-    listPockets = return pockets
+    listPockets = return []
 
     addPocket :: Pocket -> Handler Pocket
     addPocket = return
-
----
-
-pockets = [Pocket "Foo" PrivatePocket, Pocket "Bar" PrivatePocket]

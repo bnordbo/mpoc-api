@@ -1,7 +1,19 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses      #-}
+{-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE TypeFamilies               #-}
 {-# LANGUAGE UndecidableInstances       #-}
+
+module Mpoc.Data
+  ( runData
+  -- * Pockets
+  , addPocket
+  , listPockets
+  -- * Fragments
+  , addFragment
+  , getFragment
+  , listFragments
+  ) where
 
 import           Control.Lens
 import           Control.Monad.Base

@@ -4,7 +4,6 @@ module Mpoc.Data.Types
     , ToDynamoDB   (..)
     , attr
     -- * Re-exports
-    , avS
     , avB
     , avBOOL
     , avBS
