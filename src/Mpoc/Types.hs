@@ -79,7 +79,7 @@ newtype FragmentId = FragmentId UUID
 
 instance FromHttpApiData FragmentId where
   parseQueryParam q =
-      FragmentId <$> note ("Invalid fragment ID") (UUID.fromText q)
+      FragmentId <$> note "Invalid fragment ID" (UUID.fromText q)
 
 instance FromJSON FragmentId where
   parseJSON = withText "uuid string" $
@@ -89,7 +89,8 @@ instance ToJSON FragmentId where
   toJSON (FragmentId uuid) = String $ UUID.toText uuid
 
 data Fragment = Fragment
-    { fragId :: FragmentId
+    { userId :: UserId
+    , fragId :: FragmentId
     , title  :: Text
     , access :: FragmentAccess
     , body   :: Text
@@ -99,7 +100,8 @@ instance ToJSON Fragment
 
 instance FromDynamoDB Fragment where
     fromDynamoDB avs =
-        Fragment <$> attr avs "FragmentId" avS (fmap FragmentId . UUID.fromText)
+        Fragment <$> attr avs "UserId"     avS (fmap UserId . UUID.fromText)
+                 <*> attr avs "FragmentId" avS (fmap FragmentId . UUID.fromText)
                  <*> attr avs "Title"      avS pure
                  <*> attr avs "Access"     avN (const $ pure PublicFragment)
                  <*> attr avs "Body"       avS pure
@@ -107,7 +109,8 @@ instance FromDynamoDB Fragment where
 -- XXX: Maybe split the pure API types from the model types?
 -- XXX: Do we set access immediately? How do we expose public fragments?
 data NewFragment = NewFragment
-    { title  :: Text
+    { userId :: UserId
+    , title  :: Text
     , body   :: Text
     } deriving (Eq, Generic, Show)
 

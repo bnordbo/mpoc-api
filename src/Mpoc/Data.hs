@@ -1,6 +1,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses      #-}
 {-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE RecordWildCards            #-}
 {-# LANGUAGE TypeFamilies               #-}
 {-# LANGUAGE UndecidableInstances       #-}
 
@@ -61,15 +62,15 @@ devEnv = newEnv Ireland (FromFile "mpoc_devel" "/Users/bg/.aws/credentials")
 -- Pocket
 
 addPocket :: Pocket -> Data ()
-addPocket p = do
+addPocket Pocket{..} = do
     env <- ask
-    runResourceT . runAWST env . within Ireland $ send $
+    runResourceT . runAWST env . within Ireland . send $
         putItem "Pockets" & piItem .~ pocket
     return ()
   where
     pocket = Map.fromList
-        [ ("UserId", attributeValue & avS .~ Just (userText $ user p))
-        , ("Name",   attributeValue & avS .~ Just (name p))
+        [ ("UserId", attributeValue & avS .~ Just (userIdText user))
+        , ("Name",   attributeValue & avS .~ Just name)
         , ("Access", attributeValue & avN .~ Just "0")
         ]
 
@@ -86,17 +87,41 @@ listPockets uid = do
   where
     condition  = Just "UserId = :userId"
     attributes = Map.fromList
-      [(":userId", attributeValue & avS .~ Just (userText uid))]
+      [(":userId", attributeValue & avS .~ Just (userIdText uid))]
 
 
 --------------------------------------------------------------------------------
 -- Fragment
 
 addFragment :: Fragment -> Data ()
-addFragment f = undefined
+addFragment Fragment{..} = do
+    env <- ask
+    runResourceT . runAWST env . within Ireland . send $
+        putItem "Fragments" & piItem .~ fragment
+    return ()
+  where
+    fragment = Map.fromList
+        [ ("UserId",     attributeValue & avS .~ Just (userIdText userId))
+        , ("FragmentId", attributeValue & avS .~ Just (fragIdText fragId))
+        , ("Title",      attributeValue & avS .~ Just title)
+        , ("Access",     attributeValue & avN .~ Just "0")
+        , ("Body",       attributeValue & avS .~ Just body)
+        ]
 
-getFragment :: FragmentId -> Data (Maybe Fragment)
-getFragment fid = undefined
+getFragment :: UserId -> FragmentId -> Data (Either DataError Fragment)
+getFragment uid fid = do
+    env <- ask
+    runResourceT . runAWST env . within Ireland $ do
+        rs <- send (getItem "Fragments" & giKey .~ keys)
+        pure $ if Map.null (rs ^. girsItem)
+            then Left errMissing
+            else fromDynamoDB $ rs ^. girsItem
+  where
+    errMissing = MissingItem $ "fragment for " ++ show uid ++ "/" ++ show fid
+    keys = Map.fromList
+        [ ("UserId",     attributeValue & avS .~ Just (userIdText uid))
+        , ("FragmentId", attributeValue & avS .~ Just (fragIdText fid))
+        ]
 
 listFragments :: UserId -> Data [Either DataError Fragment]
 listFragments uid = do
@@ -107,15 +132,19 @@ listFragments uid = do
                   & qExpressionAttributeValues .~ attributes)
         =$= CL.concatMap (view qrsItems)
         =$= CL.map fromDynamoDB
-        $$ CL.consume
+         $$ CL.consume
   where
     condition  = Just "UserId = :userId"
     attributes = Map.fromList
-      [(":userId", attributeValue & avS .~ Just (userText uid))]
+      [(":userId", attributeValue & avS .~ Just (userIdText uid))]
 
 
 --------------------------------------------------------------------------------
 -- Helpers
 
-userText :: UserId -> Text
-userText (UserId uuid) = UUID.toText uuid
+-- XXX: These are silly. There must be a type class I can use.
+userIdText :: UserId -> Text
+userIdText (UserId uuid) = UUID.toText uuid
+
+fragIdText :: FragmentId -> Text
+fragIdText (FragmentId uuid) = UUID.toText uuid

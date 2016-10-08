@@ -30,6 +30,7 @@ import           Network.AWS.DynamoDB
 
 data DataError
     = MissingAttribute String
+    | MissingItem String
     | BadType String
     | BadFormat String
     deriving Show
