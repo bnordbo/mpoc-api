@@ -8,40 +8,42 @@ module Mpoc.API.Fragment
   , fragmentServer
   ) where
 
-import Control.Applicative    ((<$>))
-import Control.Monad.IO.Class
-import Data.List              (find)
-import Data.UUID.V4           (nextRandom)
-import Mpoc.Types
-import Network.Wai
-import Servant
+import           Control.Applicative       ((<$>))
+import           Control.Monad.IO.Class
+import           Data.List                 (find)
+import           Data.UUID.V4              (nextRandom)
+import qualified Mpoc.Data              as Data
+import           Mpoc.Types
+import           Servant
 
 
 type FragmentAPI
-  =    Get  '[JSON] [Fragment]
-  :<|> Capture "fragmentId" FragmentId :> Get  '[JSON] Fragment
-  :<|> ReqBody '[JSON] NewFragment :> Post '[JSON] Fragment
+    =    Capture "userId" UserId         :> Get  '[JSON] [Fragment]
+    :<|> Capture "fragmentId" FragmentId :> Get  '[JSON] Fragment
+    :<|> ReqBody '[JSON] NewFragment     :> Post '[JSON] Fragment
 
-fragmentServer :: Server FragmentAPI
+fragmentServer :: ServerT FragmentAPI Mpoc
 fragmentServer
     =    listFragments
     :<|> getFragment
     :<|> addFragment
   where
-    addFragment :: NewFragment -> Handler Fragment
-    addFragment f = do
+    addFragment :: NewFragment -> Mpoc Fragment
+    addFragment nf = do
       i <- FragmentId <$> liftIO nextRandom
-      return Fragment
-        { fragId = i
-        , title  = title (f :: NewFragment)
-        , access = PrivateFragment
-        , body   = body (f :: NewFragment)
-        }
+      let af = Fragment { userId = userId (nf :: NewFragment)
+                        , fragId = i
+                        , title  = title (nf :: NewFragment)
+                        , access = PrivateFragment
+                        , body   = body (nf :: NewFragment)
+                        }
+      Data.runData undefined $ Data.addFragment af
+      return af
 
-    listFragments :: Handler [Fragment]
-    listFragments = pure []
+    listFragments :: UserId -> Mpoc [Fragment]
+    listFragments uid = pure []
 
-    getFragment :: FragmentId -> Handler Fragment
+    getFragment :: FragmentId -> Mpoc Fragment
     getFragment n = do
       f <- pure []
       maybe (throwError $ err404 { errBody = "No such fragment" }) return

@@ -1,21 +1,28 @@
-{-# LANGUAGE DeriveGeneric         #-}
-{-# LANGUAGE DuplicateRecordFields #-}
-{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE DeriveFunctor              #-}
+{-# LANGUAGE DeriveGeneric              #-}
+{-# LANGUAGE DuplicateRecordFields      #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE OverloadedStrings          #-}
 
 module Mpoc.Types
-    ( UserId         (..)
+    ( -- * Mpoc
+      Env            (..)
+    , Mpoc           (..)
+    , UserId         (..)
     , PocketAccess   (..)
     , Pocket         (..)
     , FragmentAccess (..)
     , Fragment       (..)
     , FragmentId     (..)
     , NewFragment    (..)
-    -- * Re-exports
+      -- * Re-exports
     , module Mpoc.Data.Types
     ) where
 
 import           Control.Error          (note)
 import           Control.Monad          (mzero)
+import           Control.Monad.Except
+import           Control.Monad.Reader
 import           Data.Aeson
 import qualified Data.HashMap.Strict as Map
 import           Data.Text              (Text)
@@ -23,7 +30,23 @@ import           Data.UUID              (UUID)
 import qualified Data.UUID           as UUID
 import           GHC.Generics
 import           Mpoc.Data.Types
+import qualified Network.AWS.Env     as AWS
+import           Servant                (ServantErr)
 import           Web.HttpApiData        (FromHttpApiData(..))
+
+
+--------------------------------------------------------------------------------
+-- Mpoc
+
+data Env = Env { aws :: AWS.Env }
+
+newtype Mpoc a = Mpoc { runMpoc :: ExceptT ServantErr (ReaderT Env IO) a }
+    deriving ( Functor
+             , Applicative
+             , Monad
+             , MonadError ServantErr
+             , MonadIO
+             )
 
 
 --------------------------------------------------------------------------------
@@ -31,6 +54,10 @@ import           Web.HttpApiData        (FromHttpApiData(..))
 
 newtype UserId = UserId UUID
   deriving (Eq, Show)
+
+instance FromHttpApiData UserId where
+  parseQueryParam q =
+      UserId <$> note "Invalid user ID" (UUID.fromText q)
 
 instance FromJSON UserId where
   parseJSON = withText "uuid string" $

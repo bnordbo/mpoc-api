@@ -13,8 +13,9 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Mpoc.API
-  other-modules:       Mpoc.API.Fragment
+  exposed-modules:     Mpoc.App
+  other-modules:       Mpoc.API
+                     , Mpoc.API.Fragment
                      , Mpoc.API.Pocket
                      , Mpoc.Data
                      , Mpoc.Data.Types

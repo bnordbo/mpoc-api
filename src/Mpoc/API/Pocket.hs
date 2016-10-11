@@ -7,19 +7,18 @@ module Mpoc.API.Pocket
   ) where
 
 import Mpoc.Types
-import Network.Wai
 import Servant
 
 
 type PocketAPI
-  =    Get  '[JSON] [Pocket]
-  :<|> ReqBody '[JSON] Pocket :> Post '[JSON] Pocket
+    =    Get  '[JSON] [Pocket]
+    :<|> ReqBody '[JSON] Pocket :> Post '[JSON] Pocket
 
-pocketServer :: Server PocketAPI
+pocketServer :: ServerT PocketAPI Mpoc
 pocketServer = listPockets :<|> addPocket
   where
-    listPockets :: Handler [Pocket]
+    listPockets :: Mpoc [Pocket]
     listPockets = return []
 
-    addPocket :: Pocket -> Handler Pocket
+    addPocket :: Pocket -> Mpoc Pocket
     addPocket = return
