@@ -6,8 +6,9 @@ module Mpoc.API.Pocket
   , pocketServer
   ) where
 
-import Mpoc.Types
-import Servant
+import qualified Mpoc.Data as Data
+import           Mpoc.Types
+import           Servant
 
 
 type PocketAPI

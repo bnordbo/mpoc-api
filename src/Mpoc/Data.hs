@@ -22,14 +22,14 @@ import           Control.Monad.Base
 import           Control.Monad.Catch
 import           Control.Monad.IO.Class
 import           Control.Monad.Reader
-import           Control.Monad.Trans.AWS     hiding (Env)
+import           Control.Monad.Trans.AWS
 import           Control.Monad.Trans.Control
 import           Data.Conduit
 import qualified Data.Conduit.List               as CL
 import           Data.HashMap.Strict                (HashMap)
 import qualified Data.HashMap.Strict             as Map
 import           Data.Text                          (Text)
-import           Mpoc.Types
+import           Mpoc.Types                  hiding (Env)
 import           Network.AWS.DynamoDB
 import qualified Data.UUID                       as UUID
 
@@ -62,7 +62,7 @@ runData e d = liftIO $ runReaderT (unwrap d) e
 addPocket :: Pocket -> Data ()
 addPocket Pocket{..} = do
     env <- ask
-    runResourceT . runAWST (aws env) . within Ireland . send $
+    runResourceT . runAWST env . within Ireland . send $
         putItem "Pockets" & piItem .~ pocket
     return ()
   where
@@ -75,7 +75,7 @@ addPocket Pocket{..} = do
 listPockets :: UserId -> Data [Either DataError Pocket]
 listPockets uid = do
     env <- ask
-    runResourceT . runAWST (aws env) . within Ireland $
+    runResourceT . runAWST env . within Ireland $
         paginate (query "Pockets"
                   & qKeyConditionExpression    .~ condition
                   & qExpressionAttributeValues .~ attributes)
@@ -94,7 +94,7 @@ listPockets uid = do
 addFragment :: Fragment -> Data ()
 addFragment Fragment{..} = do
     env <- ask
-    runResourceT . runAWST (aws env) . within Ireland . send $
+    runResourceT . runAWST env . within Ireland . send $
         putItem "Fragments" & piItem .~ fragment
     return ()
   where
@@ -109,7 +109,7 @@ addFragment Fragment{..} = do
 getFragment :: UserId -> FragmentId -> Data (Either DataError Fragment)
 getFragment uid fid = do
     env <- ask
-    runResourceT . runAWST (aws env) . within Ireland $
+    runResourceT . runAWST env . within Ireland $
         decode <$> send (getItem "Fragments" & giKey .~ keys)
   where
     decode (view girsItem -> rs) =
@@ -123,7 +123,7 @@ getFragment uid fid = do
 listFragments :: UserId -> Data [Either DataError Fragment]
 listFragments uid = do
     env <- ask
-    runResourceT . runAWST (aws env) . within Ireland $
+    runResourceT . runAWST env . within Ireland $
         paginate (query "Fragments"
                   & qKeyConditionExpression    .~ condition
                   & qExpressionAttributeValues .~ attributes)

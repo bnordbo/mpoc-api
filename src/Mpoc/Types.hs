@@ -46,6 +46,7 @@ newtype Mpoc a = Mpoc { runMpoc :: ExceptT ServantErr (ReaderT Env IO) a }
              , Monad
              , MonadError ServantErr
              , MonadIO
+             , MonadReader Env
              )
 
 
